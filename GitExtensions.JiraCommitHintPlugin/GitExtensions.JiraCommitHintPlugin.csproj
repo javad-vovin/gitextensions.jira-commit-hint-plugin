@@ -15,7 +15,7 @@
 
 	<PropertyGroup>
 		<GitExtensionsDownloadPath Condition="$(GitExtensionsDownloadPath) == ''">..\..\gitextensions.shared</GitExtensionsDownloadPath>
-		<!-- path is relative to $(ProjectDir) -->
+		<GitExtensionsPath Condition="$(GitExtensionsPath) == ''">$([System.IO.Path]::Combine('$(ProjectDir)', '$(GitExtensionsDownloadPath)'))</GitExtensionsPath>
 	</PropertyGroup>
 
 	<PropertyGroup>
@@ -28,6 +28,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<PackageReference Include="GitExtensions.Extensibility" Version="7.0.0.135" />
 		<PackageReference Include="Atlassian.SDK" Version="13.0.0" />
 		<PackageReference Include="NString" Version="2.1.1" />
 		<PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
@@ -35,38 +36,32 @@
 		<PackageReference Include="Microsoft.VisualStudio.Threading" Version="17.13.61" />
 	</ItemGroup>
 
-	<!-- Reference to GitExtensions host dlls (local or CI fallback) -->
-	<ItemGroup Condition="Exists('C:\Program Files\GitExtensions\GitExtensions.Extensibility.dll')">
+	<!-- Reference to GitExtensions host dlls -->
+	<ItemGroup>
 		<Reference Include="GitUIPluginInterfaces">
-			<HintPath>C:\Program Files\GitExtensions\GitUIPluginInterfaces.dll</HintPath>
+			<HintPath>$(GitExtensionsPath)\GitUIPluginInterfaces.dll</HintPath>
 			<Private>False</Private>
 		</Reference>
 		<Reference Include="ResourceManager">
-			<HintPath>C:\Program Files\GitExtensions\ResourceManager.dll</HintPath>
+			<HintPath>$(GitExtensionsPath)\ResourceManager.dll</HintPath>
 			<Private>False</Private>
 		</Reference>
 		<Reference Include="GitExtUtils">
-			<HintPath>C:\Program Files\GitExtensions\GitExtUtils.dll</HintPath>
+			<HintPath>$(GitExtensionsPath)\GitExtUtils.dll</HintPath>
 			<Private>False</Private>
 		</Reference>
 		<Reference Include="GitCommands">
-			<HintPath>C:\Program Files\GitExtensions\GitCommands.dll</HintPath>
+			<HintPath>$(GitExtensionsPath)\GitCommands.dll</HintPath>
 			<Private>False</Private>
 		</Reference>
 		<Reference Include="GitExtensions.Extensibility">
-			<HintPath>C:\Program Files\GitExtensions\GitExtensions.Extensibility.dll</HintPath>
+			<HintPath>$(GitExtensionsPath)\GitExtensions.Extensibility.dll</HintPath>
 			<Private>False</Private>
 		</Reference>
 		<Reference Include="GitUI">
-			<HintPath>C:\Program Files\GitExtensions\GitUI.dll</HintPath>
+			<HintPath>$(GitExtensionsPath)\GitUI.dll</HintPath>
 			<Private>False</Private>
 		</Reference>
-	</ItemGroup>
-
-	<ItemGroup Condition="!Exists('C:\Program Files\GitExtensions\GitExtensions.Extensibility.dll')">
-		<PackageReference Include="GitExtensions.Extensibility" Version="7.0.0.135">
-			<ExcludeAssets>runtime</ExcludeAssets>
-		</PackageReference>
 	</ItemGroup>
 	<ItemGroup>
 	  <Compile Update="Properties\Resources.Designer.cs">
@@ -113,5 +108,7 @@
 			</NuspecProperties>
 		</PropertyGroup>
 	</Target>
+
+	<Target Name="PostBuild" AfterTargets="PostBuildEvent" />
 
 </Project>
