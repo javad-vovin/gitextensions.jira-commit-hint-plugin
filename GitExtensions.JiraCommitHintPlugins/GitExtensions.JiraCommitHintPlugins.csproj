@@ -83,7 +83,7 @@
 	<PropertyGroup>
 		<NuspecFile>$(MSBuildThisFileDirectory)$(MSBuildProjectName).nuspec</NuspecFile>
 		<Authors>Javad Vovin</Authors>
-		<PackageVersion>1.1.0</PackageVersion>
+		<PackageVersion>1.1.1</PackageVersion>
 		<Company>freelance</Company>
 		<Description>A plugin for Git Extensions to add commit comment from your Jira.</Description>
 		<PackageProjectUrl>https://github.com/javad-vovin/gitextensions.jira-commit-hint-plugin</PackageProjectUrl>
