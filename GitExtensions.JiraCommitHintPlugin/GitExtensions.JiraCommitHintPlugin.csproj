@@ -6,6 +6,7 @@
 		<Nullable>enable</Nullable>
 		<PublishRepositoryUrl>true</PublishRepositoryUrl>
 		<UseWindowsForms>true</UseWindowsForms>
+		<EnableWindowsTargeting>true</EnableWindowsTargeting>
 	</PropertyGroup>
 
 	<PropertyGroup>
@@ -34,8 +35,8 @@
 		<PackageReference Include="Microsoft.VisualStudio.Threading" Version="17.13.61" />
 	</ItemGroup>
 
-	<!-- Reference to GitExtensions host dlls -->
-	<ItemGroup>
+	<!-- Reference to GitExtensions host dlls (local or CI fallback) -->
+	<ItemGroup Condition="Exists('C:\Program Files\GitExtensions\GitExtensions.Extensibility.dll')">
 		<Reference Include="GitUIPluginInterfaces">
 			<HintPath>C:\Program Files\GitExtensions\GitUIPluginInterfaces.dll</HintPath>
 			<Private>False</Private>
@@ -60,6 +61,12 @@
 			<HintPath>C:\Program Files\GitExtensions\GitUI.dll</HintPath>
 			<Private>False</Private>
 		</Reference>
+	</ItemGroup>
+
+	<ItemGroup Condition="!Exists('C:\Program Files\GitExtensions\GitExtensions.Extensibility.dll')">
+		<PackageReference Include="GitExtensions.Extensibility" Version="7.0.0.135">
+			<ExcludeAssets>runtime</ExcludeAssets>
+		</PackageReference>
 	</ItemGroup>
 	<ItemGroup>
 	  <Compile Update="Properties\Resources.Designer.cs">
