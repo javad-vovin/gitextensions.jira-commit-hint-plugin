@@ -4,7 +4,7 @@ using System.Diagnostics.CodeAnalysis;
 
 // Use of the Microsoft namespace here is to match that of Assumes and Requires from the vs-validation library
 
-namespace GitExtensions.JiraCommitHintPlugin
+namespace GitExtensions.JiraCommitHintPlugins
 {
     internal static class Validates
     {
