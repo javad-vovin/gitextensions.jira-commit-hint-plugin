@@ -24,6 +24,7 @@ jobs:
         run: dotnet pack -c Release -o ./artifacts
 
       - name: Push to NuGet.org
+        shell: bash
         run: |
           dotnet nuget push ./artifacts/*.nupkg \
             --source https://api.nuget.org/v3/index.json \
