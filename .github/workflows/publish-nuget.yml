@@ -4,8 +4,12 @@ on:
   release:
     types: [published]
 
+permissions:
+  contents: read
+  id-token: write # Required for NuGet OIDC authentication
+
 jobs:
-  build-and-pack:
+  publish:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -14,30 +18,13 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x' # Use the version matching your project
+          dotnet-version: '8.0.x'
 
       - name: Build and Pack
         run: dotnet pack -c Release -o ./artifacts
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: nupkg
-          path: ./artifacts/*.nupkg
-
-  publish:
-    needs: build-and-pack
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: nupkg
-          path: ./artifacts
-
       - name: Push to NuGet.org
         run: |
           dotnet nuget push ./artifacts/*.nupkg \
-            --api-key ${{ secrets.NUGET_API_KEY }} \
             --source https://api.nuget.org/v3/index.json \
             --skip-duplicate
