@@ -82,11 +82,11 @@
 	<!-- Pack as .nupkg with dependency on GitExtensions.Extensibility -->
 	<PropertyGroup>
 		<NuspecFile>$(MSBuildThisFileDirectory)$(MSBuildProjectName).nuspec</NuspecFile>
-		<Authors>IErof</Authors>
+		<Authors>Javad Vovin</Authors>
 		<PackageVersion>1.1.0</PackageVersion>
 		<Company>freelance</Company>
 		<Description>A plugin for Git Extensions to add commit comment from your Jira.</Description>
-		<PackageProjectUrl>https://github.com/ierof/gitextensions.jiracommithintplugin</PackageProjectUrl>
+		<PackageProjectUrl>https://github.com/javad-vovin/gitextensions.jira-commit-hint-plugin</PackageProjectUrl>
 		<PackageTags>GitExtensions</PackageTags>
 	</PropertyGroup>
 	<Target Name="SetPackageProperties" BeforeTargets="GenerateNuspec">

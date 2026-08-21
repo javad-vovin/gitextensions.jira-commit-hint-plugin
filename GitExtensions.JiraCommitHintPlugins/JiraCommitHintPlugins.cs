@@ -15,12 +15,12 @@ using NString;
 using ResourceManager;
 using RestSharp.Authenticators;
 
-namespace GitExtensions.JiraCommitHintPlugin
+namespace GitExtensions.JiraCommitHintPlugins
 {
     [Export(typeof(IGitPlugin))]
     [Export(typeof(IGitPluginForCommit))]
     [Export(typeof(IGitPluginForRepository))]
-    public class JiraCommitHintPlugin : GitPluginBase, IGitPluginForRepository, IGitPluginForCommit
+    public class JiraCommitHintPlugins : GitPluginBase, IGitPluginForRepository, IGitPluginForCommit
     {
         private static readonly TranslationString JiraFieldsLabel = new("Jira fields");
         private static readonly TranslationString QueryHelperLinkText = new("Open the query helper inside Jira");
@@ -46,7 +46,7 @@ namespace GitExtensions.JiraCommitHintPlugin
         private JiraTaskDTO[]? _currentMessages;
         private Button? _btnPreview;
 
-        static JiraCommitHintPlugin()
+        static JiraCommitHintPlugins()
         {
             RegisterAssemblyResolver();
         }
@@ -63,7 +63,7 @@ namespace GitExtensions.JiraCommitHintPlugin
                         return null;
                     }
 
-                    var dir = Path.GetDirectoryName(typeof(JiraCommitHintPlugin).Assembly.Location);
+                    var dir = Path.GetDirectoryName(typeof(JiraCommitHintPlugins).Assembly.Location);
                     if (dir != null)
                     {
                         var path = Path.Combine(dir, name + ".dll");
@@ -80,7 +80,7 @@ namespace GitExtensions.JiraCommitHintPlugin
             };
         }
 
-        public JiraCommitHintPlugin() : base(true)
+        public JiraCommitHintPlugins() : base(true)
         {
             RegisterAssemblyResolver();
             Id = new Guid("B0128E39-D312-47DA-B18A-43F5CA726D7D");
