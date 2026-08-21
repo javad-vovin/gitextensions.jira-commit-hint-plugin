@@ -10,11 +10,11 @@
 		<readme>docs\README.md</readme>
 		<license type="expression">Apache-2.0</license>
 		<dependencies>
-			<dependency id="GitExtensions.Extensibility" version="[0.1.0, 1.0.0)" />
+			<dependency id="GitExtensions.Extensibility" version="[7.0.0, 8.0.0)" />
 			<dependency id="Atlassian.SDK" version="13.0.0" />
 			<dependency id="NString" version="2.1.1" />
-			<dependency id="System.ComponentModel.Composition" version="7.0.0" />
-			<dependency id="Microsoft.VisualStudio.Threading" version="17.4.27" />
+			<dependency id="System.ComponentModel.Composition" version="6.0.0" />
+			<dependency id="Microsoft.VisualStudio.Threading" version="17.13.61" />
 		</dependencies>
 	</metadata>
 	<files>

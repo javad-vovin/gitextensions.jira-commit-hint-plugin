@@ -1,17 +1,26 @@
-﻿using System.ComponentModel.Composition;
+using System.ComponentModel.Composition;
 using System.Diagnostics;
+using System.Reflection;
 using Atlassian.Jira;
+using Atlassian.Jira.Remote;
+using GitExtensions.Extensibility.Git;
+using GitExtensions.Extensibility.Plugins;
+using GitExtensions.Extensibility.Settings;
+using GitExtensions.Extensibility.Settings.UserControls;
+using GitExtensions.Extensibility.Translations;
 using GitExtUtils.GitUI;
 using GitUI;
 using GitUIPluginInterfaces;
-using GitUIPluginInterfaces.UserControls;
 using NString;
 using ResourceManager;
+using RestSharp.Authenticators;
 
 namespace GitExtensions.JiraCommitHintPlugin
 {
     [Export(typeof(IGitPlugin))]
-    public class JiraCommitHintPlugin : GitPluginBase, IGitPluginForRepository
+    [Export(typeof(IGitPluginForCommit))]
+    [Export(typeof(IGitPluginForRepository))]
+    public class JiraCommitHintPlugin : GitPluginBase, IGitPluginForRepository, IGitPluginForCommit
     {
         private static readonly TranslationString JiraFieldsLabel = new("Jira fields");
         private static readonly TranslationString QueryHelperLinkText = new("Open the query helper inside Jira");
@@ -31,18 +40,52 @@ namespace GitExtensions.JiraCommitHintPlugin
         private readonly CredentialsSetting _credentialsSettings;
 
         // For compatibility reason, the setting key is kept to "JDL Query" even if the label is, rightly, "JQL Query" (for "Jira Query Language")
-        private readonly StringSetting _jqlQuerySettings = new("JDL Query", "JQL Query", "assignee = currentUser() and resolution is EMPTY ORDER BY updatedDate DESC", true);
-        private readonly StringSetting _stringTemplateSetting = new("Jira Message Template", "Message Template", DefaultFormat, true);
-        private readonly string _jiraFields = $"{{{string.Join("} {", typeof(Issue).GetProperties().Where(i => i.CanRead).Select(i => i.Name).OrderBy(i => i).ToArray())}}}";
+        private readonly StringSetting _jqlQuerySettings = new("JDL Query", "JQL Query", "assignee = currentUser() and resolution is EMPTY ORDER BY updatedDate DESC");
+        private readonly StringSetting _stringTemplateSetting = new("Jira Message Template", "Message Template", DefaultFormat);
         private IGitModule? _gitModule;
         private JiraTaskDTO[]? _currentMessages;
         private Button? _btnPreview;
 
+        static JiraCommitHintPlugin()
+        {
+            RegisterAssemblyResolver();
+        }
+
+        public static void RegisterAssemblyResolver()
+        {
+            AppDomain.CurrentDomain.AssemblyResolve += (sender, args) =>
+            {
+                try
+                {
+                    var name = new AssemblyName(args.Name).Name;
+                    if (string.IsNullOrEmpty(name))
+                    {
+                        return null;
+                    }
+
+                    var dir = Path.GetDirectoryName(typeof(JiraCommitHintPlugin).Assembly.Location);
+                    if (dir != null)
+                    {
+                        var path = Path.Combine(dir, name + ".dll");
+                        if (File.Exists(path))
+                        {
+                            return Assembly.LoadFrom(path);
+                        }
+                    }
+                }
+                catch
+                {
+                }
+                return null;
+            };
+        }
+
         public JiraCommitHintPlugin() : base(true)
         {
+            RegisterAssemblyResolver();
             Id = new Guid("B0128E39-D312-47DA-B18A-43F5CA726D7D");
-            Name = "Jira Commit Hint";
-            Translate();
+            SetNameAndDescription("Jira Commit Hint");
+            Translate(null);
             Icon = Resources.Resources.IconJira;
 
             _credentialsSettings = new CredentialsSetting("JiraCredentials", "Jira credentials", () => _gitModule?.WorkingDir);
@@ -61,7 +104,7 @@ namespace GitExtensions.JiraCommitHintPlugin
                 return false;
             }
 
-            ThreadHelper.JoinableTaskFactory.RunAsync(
+            _ = ThreadHelper.JoinableTaskFactory.RunAsync(
                 async () =>
                 {
                     var message = await GetMessageToCommitAsync(_jira, _query, _stringTemplate);
@@ -79,7 +122,7 @@ namespace GitExtensions.JiraCommitHintPlugin
             _urlSettings.CustomControl = new TextBox();
             yield return _urlSettings;
 
-            _credentialsSettings.CustomControl = new CredentialsControl();
+            _credentialsSettings.CustomControl = new CredentialsControl("User Name / Email (or empty for PAT)", "Password / API Token / PAT");
             yield return _credentialsSettings;
 
             _jqlQuerySettings.CustomControl = new TextBox();
@@ -89,7 +132,13 @@ namespace GitExtensions.JiraCommitHintPlugin
             queryHelperLink.Click += QueryHelperLink_Click!;
             yield return new PseudoSetting(queryHelperLink);
 
-            yield return new PseudoSetting(_jiraFields, JiraFieldsLabel.Text, DpiUtil.Scale(55));
+            string jiraFields = "{Key} {Summary}";
+            try
+            {
+                jiraFields = $"{{{string.Join("} {", typeof(Issue).GetProperties().Where(i => i.CanRead).Select(i => i.Name).OrderBy(i => i).ToArray())}}}";
+            }
+            catch {}
+            yield return new PseudoSetting(jiraFields, JiraFieldsLabel.Text, DpiUtil.Scale(55));
 
             TextBox txtTemplate = new()
             {
@@ -122,7 +171,11 @@ namespace GitExtensions.JiraCommitHintPlugin
 
             try
             {
-                Process.Start(_urlSettings.CustomControl.Text + "/secure/IssueNavigator.jspa?mode=show&createNew=true");
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = _urlSettings.CustomControl.Text + "/secure/IssueNavigator.jspa?mode=show&createNew=true",
+                    UseShellExecute = true
+                });
             }
             catch (Exception ex)
             {
@@ -143,12 +196,22 @@ namespace GitExtensions.JiraCommitHintPlugin
 
                 _btnPreview.Enabled = false;
 
-                var localJira = Jira.CreateRestClient(_urlSettings.CustomControl.Text, _credentialsSettings.CustomControl.UserName,
-                    _credentialsSettings.CustomControl.Password);
+                var url = _urlSettings.CustomControl.Text;
+                var username = _credentialsSettings.CustomControl.UserName;
+                var password = _credentialsSettings.CustomControl.Password;
+
+                if (string.IsNullOrWhiteSpace(url))
+                {
+                    MessageBox.Show("Please enter a valid Jira URL.", "Invalid URL", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    _btnPreview.Enabled = true;
+                    return;
+                }
+
+                var localJira = CreateJiraClient(url, username, password);
                 var localQuery = _jqlQuerySettings.CustomControl.Text;
                 var localStringTemplate = _stringTemplateSetting.CustomControl.Text;
 
-                ThreadHelper.JoinableTaskFactory.RunAsync(
+                _ = ThreadHelper.JoinableTaskFactory.RunAsync(
                     async () =>
                     {
                         var message = await GetMessageToCommitAsync(localJira, localQuery, localStringTemplate);
@@ -167,13 +230,31 @@ namespace GitExtensions.JiraCommitHintPlugin
             }
         }
 
+        public static Jira CreateJiraClient(string url, string? username, string? password)
+        {
+            if (string.IsNullOrWhiteSpace(username) && !string.IsNullOrWhiteSpace(password))
+            {
+                var restClient = new JiraRestClient(url, null, null);
+                var field = typeof(JiraRestClient).GetField("_restClient", BindingFlags.NonPublic | BindingFlags.Instance);
+                if (field?.GetValue(restClient) is RestSharp.RestClient innerRest)
+                {
+                    innerRest.Authenticator = new OAuth2AuthorizationRequestHeaderAuthenticator(password, "Bearer");
+                }
+                return Jira.CreateRestClient(restClient);
+            }
+            else
+            {
+                return Jira.CreateRestClient(url, username, password);
+            }
+        }
+
         public override void Register(IGitUICommands gitUiCommands)
         {
             base.Register(gitUiCommands);
-            _gitModule = gitUiCommands.GitModule;
+            _gitModule = gitUiCommands.Module;
             gitUiCommands.PostSettings += GitUiCommands_PostSettings!;
             gitUiCommands.PreCommit += GitUiCommands_PreCommit!;
-            gitUiCommands.PostCommit += GitUiCommands_PostRepositoryChanged!;
+            gitUiCommands.PostCommit += GitUiCommands_PostCommit!;
             gitUiCommands.PostRepositoryChanged += GitUiCommands_PostRepositoryChanged!;
             UpdateJiraSettings();
         }
@@ -188,12 +269,12 @@ namespace GitExtensions.JiraCommitHintPlugin
             var url = _urlSettings.ValueOrDefault(Settings);
             var credentials = _credentialsSettings.GetValueOrDefault(Settings);
 
-            if (string.IsNullOrWhiteSpace(url) || string.IsNullOrWhiteSpace(credentials.UserName))
+            if (string.IsNullOrWhiteSpace(url) || (string.IsNullOrWhiteSpace(credentials.UserName) && string.IsNullOrWhiteSpace(credentials.Password)))
             {
                 return;
             }
 
-            _jira = Jira.CreateRestClient(url, credentials.UserName, credentials.Password);
+            _jira = CreateJiraClient(url, credentials.UserName, credentials.Password);
             _query = _jqlQuerySettings.ValueOrDefault(Settings);
             _stringTemplate = _stringTemplateSetting.ValueOrDefault(Settings);
             if (_btnPreview is null)
@@ -214,7 +295,7 @@ namespace GitExtensions.JiraCommitHintPlugin
         {
             base.Unregister(gitUiCommands);
             gitUiCommands.PreCommit -= GitUiCommands_PreCommit!;
-            gitUiCommands.PostCommit -= GitUiCommands_PostRepositoryChanged!;
+            gitUiCommands.PostCommit -= GitUiCommands_PostCommit!;
             gitUiCommands.PostSettings -= GitUiCommands_PostSettings!;
             gitUiCommands.PostRepositoryChanged -= GitUiCommands_PostRepositoryChanged!;
         }
@@ -226,12 +307,12 @@ namespace GitExtensions.JiraCommitHintPlugin
                 return;
             }
 
-            if (_jira?.Issues is null || _query is null)
+            if (_jira is null || _query is null)
             {
                 return;
             }
 
-            ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
+            _ = ThreadHelper.JoinableTaskFactory.RunAsync(async () =>
             {
                 var currentMessages = await GetMessageToCommitAsync(_jira, _query, _stringTemplate);
 
@@ -245,7 +326,17 @@ namespace GitExtensions.JiraCommitHintPlugin
             });
         }
 
+        private void GitUiCommands_PostCommit(object sender, GitUIPostActionEventArgs e)
+        {
+            ClearCommitTemplates(e.GitUICommands);
+        }
+
         private void GitUiCommands_PostRepositoryChanged(object sender, GitUIEventArgs e)
+        {
+            ClearCommitTemplates(e.GitUICommands);
+        }
+
+        private void ClearCommitTemplates(IGitUICommands gitUICommands)
         {
             if (!_enabledSettings.ValueOrDefault(Settings))
             {
@@ -259,7 +350,7 @@ namespace GitExtensions.JiraCommitHintPlugin
 
             foreach (var message in _currentMessages)
             {
-                e.GitUICommands.RemoveCommitTemplate(message.Title);
+                gitUICommands.RemoveCommitTemplate(message.Title);
             }
 
             _currentMessages = null;
@@ -276,11 +367,11 @@ namespace GitExtensions.JiraCommitHintPlugin
             }
             catch (Exception ex)
             {
-                return new[] { new JiraTaskDTO($"{Name} error", ex.ToString()) };
+                return new[] { new JiraTaskDTO("Jira Commit Hint error", ex.ToString()) };
             }
         }
 
-        private class JiraTaskDTO
+        public class JiraTaskDTO
         {
             public string Title { get; }
             public string Text { get; }

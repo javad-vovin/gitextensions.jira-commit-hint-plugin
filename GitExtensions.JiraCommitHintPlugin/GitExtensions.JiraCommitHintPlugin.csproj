@@ -1,7 +1,7 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFramework>net6.0-windows</TargetFramework>
+		<TargetFramework>net10.0-windows</TargetFramework>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 		<PublishRepositoryUrl>true</PublishRepositoryUrl>
@@ -28,28 +28,36 @@
 
 	<ItemGroup>
 		<PackageReference Include="Atlassian.SDK" Version="13.0.0" />
-		<PackageReference Include="GitExtensions.Extensibility" Version="0.3.0.57" />
 		<PackageReference Include="NString" Version="2.1.1" />
-		<PackageReference Include="System.ComponentModel.Composition" Version="7.0.0" />
-		<PackageReference Include="Microsoft.VisualStudio.Threading" Version="17.4.27" />
+		<PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+		<PackageReference Include="System.ComponentModel.Composition" Version="6.0.0" />
+		<PackageReference Include="Microsoft.VisualStudio.Threading" Version="17.13.61" />
 	</ItemGroup>
 
-	<!-- Reference to GitExtensions dlls. -->
+	<!-- Reference to GitExtensions host dlls -->
 	<ItemGroup>
 		<Reference Include="GitUIPluginInterfaces">
-			<HintPath>$(GitExtensionsDownloadPath)\GitUIPluginInterfaces.dll</HintPath>
+			<HintPath>C:\Program Files\GitExtensions\GitUIPluginInterfaces.dll</HintPath>
 			<Private>False</Private>
 		</Reference>
 		<Reference Include="ResourceManager">
-			<HintPath>$(GitExtensionsDownloadPath)\ResourceManager.dll</HintPath>
+			<HintPath>C:\Program Files\GitExtensions\ResourceManager.dll</HintPath>
 			<Private>False</Private>
 		</Reference>
 		<Reference Include="GitExtUtils">
-			<HintPath>$(GitExtensionsDownloadPath)\GitExtUtils.dll</HintPath>
+			<HintPath>C:\Program Files\GitExtensions\GitExtUtils.dll</HintPath>
 			<Private>False</Private>
 		</Reference>
 		<Reference Include="GitCommands">
-			<HintPath>$(GitExtensionsDownloadPath)\GitCommands.dll</HintPath>
+			<HintPath>C:\Program Files\GitExtensions\GitCommands.dll</HintPath>
+			<Private>False</Private>
+		</Reference>
+		<Reference Include="GitExtensions.Extensibility">
+			<HintPath>C:\Program Files\GitExtensions\GitExtensions.Extensibility.dll</HintPath>
+			<Private>False</Private>
+		</Reference>
+		<Reference Include="GitUI">
+			<HintPath>C:\Program Files\GitExtensions\GitUI.dll</HintPath>
 			<Private>False</Private>
 		</Reference>
 	</ItemGroup>
@@ -73,7 +81,7 @@
 	<PropertyGroup>
 		<NuspecFile>$(MSBuildThisFileDirectory)$(MSBuildProjectName).nuspec</NuspecFile>
 		<Authors>IErof</Authors>
-		<PackageVersion>1.0.1.0</PackageVersion>
+		<PackageVersion>1.1.0</PackageVersion>
 		<Company>freelance</Company>
 		<Description>A plugin for Git Extensions to add commit comment from your Jira.</Description>
 		<PackageProjectUrl>https://github.com/ierof/gitextensions.jiracommithintplugin</PackageProjectUrl>
