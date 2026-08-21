@@ -20,6 +20,16 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
+      - name: Download Git Extensions Portable
+        shell: pwsh
+        run: |
+          $dest = Join-Path (Get-Location) "..\gitextensions.shared"
+          New-Item -ItemType Directory -Path $dest -Force
+          $url = "https://github.com/gitextensions/gitextensions/releases/download/v7.2.0/GitExtensions-Portable-x64-7.2.0.92-501f831.zip"
+          $zip = Join-Path $dest "gitext.zip"
+          Invoke-WebRequest -Uri $url -OutFile $zip
+          Expand-Archive -Path $zip -DestinationPath $dest -Force
+
       - name: Build and Pack
         run: dotnet pack -c Release -o ./artifacts
 
